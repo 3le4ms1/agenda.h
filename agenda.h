@@ -1,4 +1,4 @@
-// agenda.h -- v1.0 -- Public Domain --
+// agenda.h -- v1.0.1 -- Public Domain -- https://www.github.com/3le4ms1/agenda.h
 
 // A GENeric Dynamic Array implementation in C
 
@@ -90,7 +90,10 @@ extern "C" {
 // magic number field that will be checked on each operation.  This is useful to
 // prevent operation on unsafe memory
 #ifdef AGENDA_HARDEN_WITH_MAGIC
-#    define AGENDA_MAGIC_NUMBER 0x4144
+#    ifndef AGENDA__HARDEN_WITH_MAGIC_GUARD_
+#        define AGENDA__HARDEN_WITH_MAGIC_GUARD_
+#        define AGENDA_MAGIC_NUMBER 0x4144
+#    endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
 #endif // AGENDA_HARDEN_WITH_MAGIC
 
 // The creation of the dynamic array, via the `agenda_init()` function, returns the
@@ -106,9 +109,9 @@ extern "C" {
 //                 items
 
 typedef struct {
-    #ifdef AGENDA_HARDEN_WITH_MAGIC
+    #ifdef AGENDA__HARDEN_WITH_MAGIC_GUARD_
     uint16_t magic;
-    #endif // AGENDA_HARDEN_WITH_MAGIC
+    #endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
 
     // All the members of the header measure the memory in bytes
                       // Example:
@@ -123,7 +126,7 @@ typedef void* Agenda;
 #define agenda(T) T*
 
 AGENDADEF Agenda agenda_init_(size_t item_size);
-AGENDADEF void agenda_deinit_(Agenda *items);
+AGENDADEF bool agenda_deinit_(Agenda *items);
 AGENDADEF bool agenda_push_back_(Agenda *items, void *item);
 AGENDADEF bool agenda_push_back_array_(Agenda *items, void *arr, size_t arr_len);
 AGENDADEF bool agenda_pop_back_(Agenda *items);
@@ -150,6 +153,8 @@ AGENDADEF bool agenda_reset_(Agenda *items);
 #endif // AGENDA_H_
 
 #ifdef AGENDA_IMPLEMENTATION
+#    ifndef AGENDA__IMPLEMENTATION_GUARD_
+#    define AGENDA__IMPLEMENTATION_GUARD_
 
 // Auxiliary functions and macros
 #define agenda__get_items(da) ((Agenda_Header*)da + 1)
@@ -183,11 +188,11 @@ AGENDADEF Agenda_Header *agenda_get_header_(Agenda *items) {
 
     Agenda_Header *da = ((Agenda_Header*)(*items)) - 1;
 
-    #ifdef AGENDA_HARDEN_WITH_MAGIC
+    #ifdef AGENDA__HARDEN_WITH_MAGIC_GUARD_
     if (da->magic != AGENDA_MAGIC_NUMBER) {
         da = NULL;
     }
-    #endif // AGENDA_HARDEN_WITH_MAGIC
+    #endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
 
     return da;
 }
@@ -198,11 +203,11 @@ AGENDADEF Agenda_Header *agenda_get_header_(Agenda *items) {
 AGENDADEF size_t agenda_items_count_(Agenda *items) {
     if (items == NULL || *items == NULL) { return 0; }
 
-    #ifdef AGENDA_HARDEN_WITH_MAGIC
+    #ifdef AGENDA__HARDEN_WITH_MAGIC_GUARD_
     if (agenda_get_header(items)->magic != AGENDA_MAGIC_NUMBER) {
         return 0;
     }
-    #endif // AGENDA_HARDEN_WITH_MAGIC
+    #endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
     return ((agenda_get_header(items)->size)/(agenda_get_header(items)->item_size));
 }
 
@@ -212,11 +217,11 @@ AGENDADEF size_t agenda_items_count_(Agenda *items) {
 AGENDADEF bool agenda_reset_(Agenda *items) {
     if (items != NULL || *items == NULL) { return false; }
 
-    #ifdef AGENDA_HARDEN_WITH_MAGIC
+    #ifdef AGENDA__HARDEN_WITH_MAGIC_GUARD_
     if (agenda_get_header(items)->magic != AGENDA_MAGIC_NUMBER) {
         return false;
     }
-    #endif // AGENDA_HARDEN_WITH_MAGIC
+    #endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
     agenda_get_header(items)->size = 0;
     return true;
 }
@@ -228,9 +233,9 @@ AGENDADEF Agenda agenda_init_(size_t item_size) {
     Agenda_Header *da = malloc(sizeof(Agenda_Header) + AGENDA_INITIAL_CAPACITY_IN_BYTES);
     if (da == NULL) { return NULL; }
 
-    #ifdef AGENDA_HARDEN_WITH_MAGIC
+    #ifdef AGENDA__HARDEN_WITH_MAGIC_GUARD_
     da->magic = AGENDA_MAGIC_NUMBER;
-    #endif // AGENDA_HARDEN_WITH_MAGIC
+    #endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
 
     da->item_size = item_size;
     da->size = 0;
@@ -238,18 +243,20 @@ AGENDADEF Agenda agenda_init_(size_t item_size) {
     return agenda__get_items(da);
 }
 
-// Deallocates the dynamic array passed
-AGENDADEF void agenda_deinit_(Agenda *items) {
+// Deallocates the given dynamic array
+AGENDADEF bool agenda_deinit_(Agenda *items) {
     if (*items != NULL) {
         Agenda_Header *da = agenda_get_header(items);
 
-        #ifdef AGENDA_HARDEN_WITH_MAGIC
-        if (da->magic != AGENDA_MAGIC_NUMBER) { return; }
-        #endif // AGENDA_HARDEN_WITH_MAGIC
+        #ifdef AGENDA__HARDEN_WITH_MAGIC_GUARD_
+        if (da->magic != AGENDA_MAGIC_NUMBER) { return false; }
+        #endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
 
         AGENDA_FREE(da);
         *items = NULL;
+        return true;
     }
+    return false;
 }
 
 // Makes available a new position on the back of the dynamic array, and copies
@@ -258,10 +265,10 @@ AGENDADEF bool agenda_push_back_(Agenda *items, void *item) {
     if (*items == NULL) return false;
 
     Agenda_Header *da;
-    #ifdef AGENDA_HARDEN_WITH_MAGIC
+    #ifdef AGENDA__HARDEN_WITH_MAGIC_GUARD_
     da = agenda_get_header(items);
     if (da->magic != AGENDA_MAGIC_NUMBER) { return false; }
-    #endif // AGENDA_HARDEN_WITH_MAGIC
+    #endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
 
     agenda__realloc_many(items, 1);
     da = agenda_get_header(items); // Required second read in case of realloc,
@@ -277,9 +284,9 @@ AGENDADEF bool agenda_push_back_array_(Agenda *items, void *arr, size_t arr_len)
     if (*items == NULL || arr_len == 0) { return false; }
 
     Agenda_Header *da = agenda_get_header(items);
-    #ifdef AGENDA_HARDEN_WITH_MAGIC
+    #ifdef AGENDA__HARDEN_WITH_MAGIC_GUARD_
     if (da->magic != AGENDA_MAGIC_NUMBER) { return false; }
-    #endif // AGENDA_HARDEN_WITH_MAGIC
+    #endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
 
     agenda__realloc_many(items, arr_len);
     da = agenda_get_header(items);
@@ -293,9 +300,9 @@ AGENDADEF bool agenda_pop_back_(Agenda *items) {
 
     Agenda_Header *da = agenda_get_header(items);
 
-    #ifdef AGENDA_HARDEN_WITH_MAGIC
+    #ifdef AGENDA__HARDEN_WITH_MAGIC_GUARD_
     if (da->magic != AGENDA_MAGIC_NUMBER) { return false; }
-    #endif // AGENDA_HARDEN_WITH_MAGIC
+    #endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
 
     if (da->size >= da->item_size) {
         da->size -= da->item_size;
@@ -315,9 +322,9 @@ AGENDADEF bool agenda_shrink_to_fit_(Agenda *items) {
     if (items == NULL || *items == NULL) { return false; }
 
     Agenda_Header *da = agenda_get_header(items);
-    #ifdef AGENDA_HARDEN_WITH_MAGIC
+    #ifdef AGENDA__HARDEN_WITH_MAGIC_GUARD_
     if (da->magic != AGENDA_MAGIC_NUMBER) { return false; }
-    #endif // AGENDA_HARDEN_WITH_MAGIC
+    #endif // AGENDA__HARDEN_WITH_MAGIC_GUARD_
 
     Agenda_Header *new_da = AGENDA_REALLOC(da, sizeof(Agenda_Header) + da->size);
     if (new_da == NULL) { return false; }
@@ -326,22 +333,23 @@ AGENDADEF bool agenda_shrink_to_fit_(Agenda *items) {
     return true;
 }
 
+#    endif // AGENDA__IMPLEMENTATION_GUARD_
 #endif // AGENDA_IMPLEMENTATION
 
 #ifdef AGENDA_SHORT_PREFIX
-    #ifndef AGENDA_SHORT_PREFIX_GUARD_
-    #define AGENDA_SHORT_PREFIX_GUARD_
-        #define da                 agenda
-        #define da_init            agenda_init
-        #define da_deinit          agenda_deinit
-        #define da_get_header      agenda_get_header
-        #define da_items_count     agenda_items_count
-        #define da_push_back       agenda_push_back
-        #define da_push_back_array agenda_push_back_array
-        #define da_pop_back        agenda_pop_back
-        #define da_reset           agenda_reset
-        #define da_shrink_to_fit   agenda_shrink_to_fit
-    #endif // AGENDA_SHORT_PREFIX_GUARD_
+#    ifndef AGENDA__SHORT_PREFIX_GUARD_
+#    define AGENDA__SHORT_PREFIX_GUARD_
+#        define da                 agenda
+#        define da_init            agenda_init
+#        define da_deinit          agenda_deinit
+#        define da_get_header      agenda_get_header
+#        define da_items_count     agenda_items_count
+#        define da_push_back       agenda_push_back
+#        define da_push_back_array agenda_push_back_array
+#        define da_pop_back        agenda_pop_back
+#        define da_reset           agenda_reset
+#        define da_shrink_to_fit   agenda_shrink_to_fit
+#    endif // AGENDA__SHORT_PREFIX_GUARD_
 #endif // AGENDA_SHORT_NAMES
 
 // Future plans:
@@ -352,7 +360,8 @@ AGENDADEF bool agenda_shrink_to_fit_(Agenda *items) {
 //        - #define agenda_sb_push_back_str(da, item)
 
 // Revision history:
-// 1.0 (2025-27-12) first release
+// 1.0.1 (2026-01-05) adding `AGENDA__HARDEN_WITH_MAGIC_GUARD_' for better flag handling
+// 1.0.0 (2025-27-12) first release
 
 // License:
 

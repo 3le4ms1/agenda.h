@@ -9,14 +9,12 @@
 #define AGENDA_IMPLEMENTATION
 #define AGENDA_SHORT_PREFIX
 #define AGENDA_HARDEN_WITH_MAGIC
+#include "../agenda.h"
 
 #define USE_EXAMPLE_2
 #ifdef USE_EXAMPLE_2
 #include "example_2.h"
-#else
-#include "../agenda.h"
 #endif // USE_EXAMPLE_2
-
 
 #define array_len(items) (sizeof(items)/sizeof(items[0]))
 
@@ -34,11 +32,11 @@ int main(void) {
     printf("agenda_header: %p\n", da_get_header(&array));
 
     printf("---- agenda_push_back ----\n");
-    printf(">>> agenda_push_back(&array, &x) 100x\n");
     for (int i = 0; i < 100; i++) {
         int x = i * 2;
         da_push_back(&array, &x);
     }
+    printf(">>> agenda_push_back(&array, &x) 100x\n");
     printf("da_items_count(str): "PSIZE"\n", da_items_count(&array));
 
     printf("---- agenda_shrink_to_fit ----\n");
@@ -80,5 +78,6 @@ int main(void) {
     printf("---- agenda_deinit ----\n");
     da_deinit(&array);
     printf("array: %p\n", array);
+
     return 0;
 }
