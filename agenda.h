@@ -361,7 +361,7 @@ AGENDADEF bool agenda_shrink_to_fit_(Agenda *items) {
 
 // Revision history:
 // 1.0.1 (2026-01-05) adding `AGENDA__HARDEN_WITH_MAGIC_GUARD_' for better flag handling
-// 1.0.0 (2025-27-12) first release
+// 1.0.0 (2025-12-27) first release
 
 // License:
 
